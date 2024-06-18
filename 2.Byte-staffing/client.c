@@ -122,27 +122,73 @@ int main()
     // При достижении соединения, клиент может послать сообщение первым.
     
     do {
+        char c;
+
 		printf("Client: ");
-        do {
-            scanf("%s",buffer);
-            send(client, buffer, bufsize, 0);
-            if (buffer[0] == '#') 
+
+        c = 0x7E;
+        send(client, &c, 1, 0); //SOP
+        
+        do
+        {
+            c = getchar();
+            if(c == 0x7E)
+            {
+                c = 0x7D; send(client, &c, 1, 0);
+                c = 0x5E; send(client, &c, 1, 0);
+                continue;
+            }
+            if(c == 0x7D)
+            {
+                c = 0x7D; send(client, &c, 1, 0);
+                c = 0x5D; send(client, &c, 1, 0);
+                continue;
+            }
+            send(client, &c, 1, 0);
+            if(c == '#')
             {
                 isExit = true;
+                break;
             }
-        } while (buffer[0] != '*' &&  buffer[0] != '#');
+        } while (c != '\n');
+        c = 0x7E;
+        send(client, &c, 1, 0); //EOP      
+
 
         printf("Server: ");
-        do {
-            recv(client, buffer, bufsize, 0);
-            printf("%s ",buffer);
-            if (buffer[0] == '#') 
+
+        do
+        {
+            recv(client, &c, 1, 0);
+        } while (c != 0x7E); //SOP
+
+        recv(client, &c, 1, 0);
+        while (c != 0x7E) //EOP  
+        {
+            if(c == 0x7D)
             {
-                //~ buffer[0] = '*';
+                recv(client, &c, 1, 0);
+                if(c == 0x5E)
+                {
+                    c = 0x7E;
+                }
+                else if(c == 0x5D)
+                {
+                    c = 0x7D;
+                }
+                else
+                {
+                    printf("%c", 0x7D);
+                    continue;
+                }
+            }
+            printf("%c", c);
+            if (c == '#') 
+            {
                 isExit = true;
             }
-        } while (buffer[0] != '*' &&  buffer[0] != '#');
-        printf("\n");
+            recv(client, &c, 1, 0);
+        }     
 
     } while (!isExit);
 
